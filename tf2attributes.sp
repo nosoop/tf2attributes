@@ -197,11 +197,14 @@ public int Native_IsIntegerValue(Handle plugin, int numParams) {
 stock int GetStaticAttribs(Address pItemDef, int[] iAttribIndices, int[] iAttribValues, int size = 16) {
 	AssertValidAddress(pItemDef);
 	
+	// 0x1C = CEconItemDefinition.m_Attributes (type CUtlVector<static_attrib_t>)
+	// 0x1C = (...) m_Attributes.m_Memory.m_pMemory (m_Attributes + 0x00)
+	// 0x28 = (...) m_Attributes.m_Size (m_Attributes + 0x0C)
 	int iNumAttribs = LoadFromAddressOffset(pItemDef, 0x28, NumberType_Int32);
 	Address pAttribList = DereferencePointer(pItemDef, .offset = 0x1C);
 	
+	// Read static_attrib_t (size 0x08) entries from contiguous block of memory
 	for (int i = 0; i < iNumAttribs && i < size; i++) {
-		// THIS IS HOW YOU GET THE ATTRIBUTES ON AN ITEMDEF!
 		Address pStaticAttrib = pAttribList + view_as<Address>(i * 0x08);
 		iAttribIndices[i] = LoadFromAddress(pStaticAttrib, NumberType_Int16);
 		iAttribValues[i] = LoadFromAddressOffset(pStaticAttrib, 0x04, NumberType_Int32);
@@ -251,12 +254,17 @@ stock int GetSOCAttribs(int iEntity, int[] iAttribIndices, int[] iAttribValues, 
 		return 0;
 	}
 	
+	// 0x34 = CEconItem.m_pAttributes (type CUtlVector<static_attrib_t>*, possibly null)
 	Address pCustomData = DereferencePointer(pEconItem, .offset = 0x34);
 	if (pCustomData) {
 		AssertValidAddress(pCustomData);
-		int iCount = LoadFromAddressOffset(pCustomData, 0x0C, NumberType_Int32);
 		
+		// 0x0C = (...) m_pAttributes->m_Size (m_pAttributes + 0x0C)
+		// 0x00 = (...) m_pAttributes->m_Memory.m_pMemory (m_pAttributes + 0x00)
+		int iCount = LoadFromAddressOffset(pCustomData, 0x0C, NumberType_Int32);
 		Address pCustomDataArray = DereferencePointer(pCustomData);
+		
+		// Read static_attrib_t (size 0x08) entries from contiguous block of memory
 		for (int i = 0; i < iCount && i < size; ++i) {
 			Address pSOCAttribEntry = pCustomDataArray + view_as<Address>(i * 0x08);
 			
@@ -545,13 +553,17 @@ public int Native_ListIDs(Handle plugin, int numParams) {
 		return -1;
 	}
 	
+	// 0x04 = CAttributeList.m_Attributes (type CUtlVector<CEconItemAttribute>)
+	// 0x04 = CAttributeList.m_Attributes.m_Memory.m_pMemory
 	Address pAttribListData = DereferencePointer(pAttributeList, .offset = 0x04);
 	AssertValidAddress(pAttribListData);
 	
+	// 0x10 = CAttributeList.m_Attributes.m_Size (m_Attributes + 0x0C)
 	int iNumAttribs = LoadFromAddressOffset(pAttributeList, 0x10, NumberType_Int32);
 	int[] iAttribIndices = new int[size];
+	
+	// Read CEconItemAttribute (size 0x10) entries from contiguous block of memory
 	for (int i = 0; i < iNumAttribs && i < size; i++) {
-		// THIS IS HOW YOU GET THE ATTRIBUTES ON AN ITEM!
 		Address pAttributeEntry = pAttribListData + view_as<Address>(i * 0x10);
 		iAttribIndices[i] = LoadFromAddressOffset(pAttributeEntry, 0x04, NumberType_Int16);
 	}
